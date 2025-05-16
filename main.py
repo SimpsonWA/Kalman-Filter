@@ -1,13 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def circle(samples = 50, origin = np.array([0,0]), radius = 1 ):
-    
+def circle_control_inputs(samples=50, radius=1.0):
     angles = np.linspace(0, 2 * np.pi, samples, endpoint=False)
-    x = origin[0] + radius * np.cos(angles)
-    y = origin[1] + radius * np.sin(angles)
-
-    return np.vstack((x, y)).T
+    velocities = radius * np.vstack((-np.sin(angles), np.cos(angles))).T
+    return velocities  # shape: (samples, 2)
 
 timeStep = 1.0
 # Intal state and covaraince
@@ -38,19 +35,24 @@ np.random.seed(42)
 inital_pos = mu.copy()
 
 # Circle Control input
-u_t = circle()
+
+u_t = circle_control_inputs()
+
 
 
 for i in range(50):
+    theta = 2 * np.pi * i / 50  # N = number of steps
+    u_t[i] = 1 * np.array([-np.sin(theta), np.cos(theta)])
+    u_vec = u_t[i].reshape(2, 1) 
     
     # Simulate the real position wit noisy measurement
     process_noise = np.random.multivariate_normal([0,0],R).reshape(2,1)
-    true_pos = A @ mu + B @ u_t[i] + process_noise
+    true_pos = A @ mu + B @ u_vec + process_noise
     measurement_noise = np.random.multivariate_normal([0,0],Q).reshape(2,1)
     z_t = C @ true_pos + measurement_noise
 
     # Prediction
-    mu_bar = A @ mu + B @ u_t[i]
+    mu_bar = A @ mu + B @ u_vec
     sigma_bar = A @ sigma @ A.transpose() + R 
 
     # Update step 
@@ -62,7 +64,7 @@ for i in range(50):
     measurements.append(z_t.flatten())
     estimates.append(mu.flatten())
 
-# --- Plotting ---
+# Plotting 
 true_positions = np.array(pos_real)
 measurements = np.array(measurements)
 estimates = np.array(estimates)
